@@ -1,0 +1,116 @@
+\documentclass[a4paper,11pt]{article}
+
+% Packages de base
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+
+% Mise en page
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+
+% Insertion du code R
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{color}    
+ \lstset{ 
+  language=R,                     % the language of the code
+  basicstyle=\normalsize\ttfamily, % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  numberstyle=\tiny\color{Blue},  % the style that is used for the line-numbers
+  stepnumber=1,                   % the step between two line-numbers. If it is 1, each line
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=single,                   % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=2,                      % sets default tabsize to 2 spaces
+  captionpos=b,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  keywordstyle=\color{RoyalBlue},      % keyword style
+  commentstyle=\color{ForestGreen},   % comment style
+  stringstyle=\color{ForestGreen},      % string literal style
+ literate={è}{{\`e}}1 {à}{{\`a}}1 {é}{{\'e}}1
+}
+
+% Pour les liens
+\usepackage{hyperref}
+\usepackage{xcolor}
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+
+% Titre
+\title{Compte-rendu sur le challenge Airbnb sur Kaggle}
+\author{Grégoire MASSOT - \href{http://www.gregoire-massot.com}{gregoire-massot.com}}
+\date{15 Avril 2016}
+
+
+\begin{document}
+
+\sffamily
+\maketitle
+
+\section*{Introduction}
+J’ai participé au challenge proposé par Airbnb sur la plateforme Kaggle du 30 Janvier à la cloture le 11 Février. Ca a été pour moi l’occasion d’évaluer mon niveau par rapport aux Data scientists su monde entier. J'ai travaillé exclusivement avec Rstudio, l'interface graphique de programmation en R.
+\\
+\\
+\textbf{J’ai fini 176/1446} (12\%, presque le premier décile !) pour mon second challenge.
+
+\section*{Début du challenge, reprise d'un code existant}
+
+J’ai commencé par reprendre un code Python existant, \href{https://www.kaggle.com/svpons/airbnb-recruiting-new-user-bookings/script-0-8655}{proposé par ce Kaggler} puis \href{https://www.kaggle.com/indradenbakker/airbnb-recruiting-new-user-bookings/rscript-0-86547}{traduit en R par un autre Kaggler} et qui a été copié par de nombreux autres participants. 
+\\
+Le code utilise seulement le fichier \texttt{train\_users.csv} contenant les informations fournies par les utilisateurs lors de leur inscription sur Airbnb. 
+\\
+\\
+\textbf{Ce code permet de se hisser à la 600ème place du leaderboard environ}.
+
+\section*{Exploitation de \texttt{sessions.csv}}
+
+Je décide alors d'exploiter le fichier \texttt{sessions.csv} qui est un log des actions de la plupart des utilisateurs de \texttt{train\_users.csv} et de \texttt{test\_users.csv}. Il faut alors insérer ces informations dans le tableau \texttt{df\_all\_combined}.
+\\
+On procède à un \textit{one-hot-encoding} pour chaque variable de \texttt{sessions.csv} et on reporte ces variables binaires dans \texttt{df\_all\_combined}.
+\\
+\\
+Voici un exemple pour la variable 'Device' de \texttt{sessions.csv}
+
+\begin{lstlisting}
+# On récupère les levels de la variable 'Device' de sessions.csv
+vars <- levels(as.factor(df_sessions$device))
+
+# Pour chaque level, on crée une variable dans df_all_combined et on
+# l'initialise à -1 (pas d'informations)
+for(i in 1:length(vars))
+{
+  df_all_combined[,vars[i]] <- -1
+}
+# Pour chaque personne présente dans sessions.csv, on va indiquer à
+# df_all_combined que on a une information sur l'utilisateur et que à priori
+# il n'a pas utilisé ce device
+people <- as.factor(df_sessions$user_id)
+df_all_combined[df_all_combined$id %in% people,vars] <- 0
+
+# Boucle sur les nouvelles variables one-hot. On remplit le df_all_combined
+# de 1 pour les utilisateurs qui possèdent les différents devices.
+for (i in 1:length(vars))
+{
+  print(i)
+  sousens <- as.factor(df_sessions[df_sessions$device %in% vars[i],]$user_id)
+  df_all_combined[df_all_combined$id %in% sousens, vars[i]] <- 1
+}
+\end{lstlisting}
+
+Ce code de \textit{feature engineering} \textbf{permet de passer sous la barre des 250 dans le leaderboard.}
+
+\section*{Fin du challenge, tuning du xgboost}
+
+Après avoir testé jusqu'à un certain point la méthode de tuning du package \texttt{caret}, j'ai utilisé mes derniers coups à gagner des places en plaçant les curseurs de xgbtrain un peu au hasard et en les testant en \textit{submit} sur le serveur de Kaggle.
+
+Cela m'a permis de \textbf{gagner entre 50 et 100 places} je pense.
+\end{document}
